@@ -14,16 +14,16 @@ export class sendPacket extends plugin {
       event: "message",
       priority: 1000,
       rule: [{
-        reg: "^#(api|API)[\\s\\S]*{.*",
+        reg: /^#(api|API)[\s\S]*{.*/,
         fnc: "api"
       }, {
-        reg: "^#(pb|PB)\\s*{.*",
+        reg: /^#(pb|PB)\s*(\{|\[).*/,
         fnc: "pb"
       }, {
-        reg: "^#(pbl|PBL)\\s*{.*",
+        reg: /^#(pbl|PBL)\s*(\{|\[).*/,
         fnc: "pbl"
       }, {
-        reg: "^#(raw|RAW)[\\s\\S]*{.*",
+        reg: /^#(raw|RAW)[\s\S]*{.*/,
         fnc: "raw"
       }]
     })
@@ -32,6 +32,7 @@ export class sendPacket extends plugin {
   async api(e) {
     if (!this.e.isMaster) return true
     let index = e.msg.indexOf("\n")
+    if (index === -1) index = e.msg.indexOf("{") - 1
     const resp = await e.bot.sendApi(
       e.msg.substring(4, index).trim().replace("/", ""),
       JSON.parse(e.msg.substring(index).trim())
@@ -60,6 +61,7 @@ export class sendPacket extends plugin {
   async raw(e) {
     if (!this.e.isMaster) return true
     let index = e.msg.indexOf("\n")
+    if (index === -1) index = e.msg.indexOf("{") - 1
     const resp = await Send(
       e,
       e.msg.substring(4, index).trim(),

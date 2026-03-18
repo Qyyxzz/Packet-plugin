@@ -29,25 +29,52 @@ export class getMsg extends plugin {
     )
     const del = ["37", "9", "16"]
     const elems = (data["3"]?.["6"]?.["3"]?.["1"]?.["2"] ?? []).filter(i => !del.includes(Object.keys(i)?.[0]))
-    const msg = [
-      [
-        "msg array:",
-        JSON.stringify(reply.message, null, 2)
-      ],
-      [
-        "msg raw:",
-        JSON.stringify(reply, null, 2)
-      ],
-      [
-        "pb elem:",
-        JSON.stringify(elems ?? ["无elem元素"], replacer, 2)
-      ],
-      [
-        "pb raw:",
-        JSON.stringify(data, replacer, 2)
-      ]
-    ].map(i => common.makeForwardMsg(e, i))
-    await Promise.all(msg)
-    e.reply(await common.makeForwardMsg(e, msg))
+
+    const user = reply.sender
+    const messages = [{
+        name: "msg array",
+        content: reply.message
+      },
+      {
+        name: "msg raw",
+        content: reply
+      },
+      {
+        name: "pb elem",
+        content: elems.length ? elems : ["无elem元素"]
+      },
+      {
+        name: "pb raw",
+        content: data
+      }
+    ].map(i => ({
+      type: "node",
+      data: {
+        uin: user.user_id,
+        name: user.nickname,
+        content: [{
+          type: "node",
+          data: {
+            uin: user.user_id,
+            name: user.nickname,
+            content: [{
+              type: "text",
+              data: {
+                text: JSON.stringify(i.content, i.name.startsWith("pb") ? replacer : null, 2)
+              }
+            }]
+          }
+        }],
+        source: i.name
+      }
+    }))
+
+    e.isGroup ? e.bot.sendApi('send_group_forward_msg', {
+      'group_id': e.group_id,
+      messages
+    }) : e.bot.sendApi('send_private_forward_msg', {
+      'user_id': e.user_id,
+      messages
+    })
   }
 }
