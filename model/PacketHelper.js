@@ -46,11 +46,11 @@ export const Send = async (
 ) => {
   try {
     const data = pb.encode(typeof content === 'object' ? content : JSON.parse(content))
-    const req = await e.bot.sendApi('send_packet', {
+    const req = await e.bot.sendApi('send_pb', {
       cmd: cmd,
-      data: Buffer.from(data).toString("hex")
+      hex: Buffer.from(data).toString("hex")
     })
-    return pb.decode(req.data)
+    return pb.decode(req.hex)
   } catch (error) {
     logger.error(`sendMessage failed: ${error.message}`, error)
   }
@@ -63,11 +63,11 @@ export const SendRaw = async (
 ) => {
   try {
     const data = typeof content === 'buffer' ? content.toString("hex") : content
-    const req = await e.bot.sendApi('send_packet', {
+    const req = await e.bot.sendApi('send_pb', {
       cmd: cmd,
-      data: content
+      hex: content
     })
-    return pb.decode(req.data)
+    return pb.decode(req.hex)
   } catch (error) {
     logger.error(`sendMessage failed: ${error.message}`, error)
   }
@@ -78,7 +78,7 @@ export const Elem = async (
   content
 ) => {
   try {
-    const packet = {
+    const pb = {
       "1": {
         [e.isGroup ? "2" : "1"]: {
           "1": e.isGroup ? e.group_id : e.user_id
@@ -98,7 +98,7 @@ export const Elem = async (
       "5": RandomUInt()
     }
 
-    return Send(e, 'MessageSvc.PbSendMsg', packet)
+    return Send(e, 'MessageSvc.PbSendMsg', pb)
   } catch (error) {
     logger.error(`sendMessage failed: ${error.message}`, error)
   }
@@ -149,7 +149,7 @@ export const sendLong = async (
   const compressedData = await gzip(pb.encode(data))
   const target = e.isGroup ? BigInt(e.group_id) : e.user_id
 
-  const packet = {
+  const pb = {
     "2": {
       "1": e.isGroup ? 3 : 1,
       "2": {
@@ -166,7 +166,7 @@ export const sendLong = async (
     }
   }
 
-  const resp = await Send(e, 'trpc.group.long_msg_interface.MsgService.SsoSendLongMsg', packet)
+  const resp = await Send(e, 'trpc.group.long_msg_interface.MsgService.SsoSendLongMsg', pb)
   return resp?.["2"]?.["3"]
 }
 
@@ -174,7 +174,7 @@ export const recvLong = async (
   e,
   resid
 ) => {
-  const packet = {
+  const pb = {
     "1": {
       "2": resid,
       "3": true
@@ -187,7 +187,7 @@ export const recvLong = async (
     }
   }
 
-  const resp = await Send(e, 'trpc.group.long_msg_interface.MsgService.SsoRecvLongMsg', packet)
+  const resp = await Send(e, 'trpc.group.long_msg_interface.MsgService.SsoRecvLongMsg', pb)
   return pb.decode(await gunzip(resp?.["1"]?.["4"]))
 }
 
@@ -198,10 +198,10 @@ export const getMsg = async (
 ) => {
   const seq = parseInt(isSeq ? message_id : (await e.bot.sendApi('get_msg', {
     message_id: message_id
-  }))?.real_seq)
+  }))?.real_id)
   if (!seq) throw new Error("获取seq失败，请尝试更新napcat")
 
-  const packet = {
+  const pb = {
     "1": {
       "1": e.group_id,
       "2": seq,
@@ -210,7 +210,7 @@ export const getMsg = async (
     "2": true
   }
 
-  return Send(e, 'trpc.msg.register_proxy.RegisterProxy.SsoGetGroupMsg', packet)
+  return Send(e, 'trpc.msg.register_proxy.RegisterProxy.SsoGetGroupMsg', pb)
 }
 
 // 仅用于方便用户手动输入pb时使用，一般不需要使用
